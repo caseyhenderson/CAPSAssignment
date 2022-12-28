@@ -1,8 +1,10 @@
 #include <iostream>
 #include <algorithm>
 #include <string>
+#include <sstream>
 #include <thread>
 #include <vector>
+#include <mutex>
 
 #include "config.h"
 #include "TCPServer.h"
@@ -19,8 +21,12 @@ string handleRequestTypes(string request);
 
 // define your mutexes? and vectors here
 // will be one vector but let's get working requests first
-// vector<Request> allRequests;
-vector<PostRequest> postRequests;
+vector<Request> allRequests;
+// vector<Request> listRequests;
+vector<string> topics;
+string listOfTopics = "";
+mutex mutey;
+// vector<PostRequest> postRequests;
 // WARNING: Contains Agony, Pain and Suffering
 // Yes, that's right - it's CAPS
 
@@ -56,62 +62,256 @@ string handleRequestTypes(string request)
 
 
 
+		// lock and unlock on each thingy
+
+		// switch case on request types
+		// feel like we may need another layer of selection here
 
 
 
 
 
 
-
-
-		if (PostRequest::parse(request).valid) {
-				PostRequest postRequest = PostRequest::parse(request);
-				// will change this to check against existing IDs when I know how to get them
-				// this will be list of existing topics
-				if (postRequest.getTopicId() == "")
+		if (Request::parse(request).valid) {
+				Request givenRequest = Request::parse(request);
+				char initialCharacter = givenRequest.requestType.front();
+				//cout << "Initial Char " + initialCharacter << endl;
+				int topicIdCount = 0;
+				// could replace with range-based for loop (for int i: allRequests) ? or other more efficient iteration
+				// there's probably a way of getting it to work with count, could use autos too
+				// this absolutely needs optimising if it's gonna be the 'check topic count' operation
+				// also needs separating out
+				// VEC CITATION ONE https://stackoverflow.com/questions/2395275/how-to-navigate-through-a-vector-using-iterators-c
+				// the iteration is what's breaking here
+				// Do we need to do this before everything? probably not, so mess around with it for efficiency
+				for (int i = 0; i < (allRequests.size()); i++)
 				{
-						postRequest.postId = 0;
-						postRequests.emplace_back(postRequest);
-
-						// create new topic somehow - presumably this creates new topicID
+						if (givenRequest.getTopicId() == allRequests.at(i).getTopicId())
+						{
+								// listRequests.emplace_back(allRequests.at(i));
+								// cout << "List request " + to_string(i) + " is " + listRequests.at(i).getMessage() << endl;
+								// only gets one message added to it, weirdly. check this
+								// and it's always the first post request?
+								// could be to do with where it is, or where the iterator is? 
+								topics.emplace_back(allRequests.at(i).getTopicId());
+								topicIdCount++;
+						}
+						else
+						{
+								topics.emplace_back(allRequests.at(i).getTopicId());
+						}
 				}
-				else {
-						postRequests.emplace_back(postRequest);
-						// append to existing topic (lookup against them)
+				cout << "Number of matches for topic " + to_string(topicIdCount) << endl;
+				// CITATION TWO https://stackoverflow.com/questions/5689003/how-to-implode-a-vector-of-strings-into-a-string-the-elegant-way
+				const char* const separator = "#";
+				ostringstream topicString;
+
+
+				// ^ this may need to be switched to handle a DS of topicIds
+				// ^ or a custom method
+				// If they all have ^ then this needs to be [1]
+				// could define a return value here and have it change based on selection - possible speed increase
+				switch (initialCharacter)
+				{
+				case 'C':
+						cout << "COUNT REQUEST" << endl;
+						// this does the count?
+						// and maybe the lock/unlock here - anywhere where we access DS put lock around it
+						// take a topicId, return size
+						// so we're returning a number here
+						// Same comparison - the number of posts on a given topic, which is how we figure out new PostIDs
+						// This operation is gonna be done a LOT so must be optimised with data structure choice (get working with vector, then choose and justify)
+						// but in this case it just tells us how many there are in the specified topic - a find/search that just returns the number
+						// where this operation should be done is another matter
+						// if (size = 0) return 0, if not return size - literally just returning the size / count value (which is also technically the new post ID referenced in the below request handlers - can be made more generic)
+						return to_string(topicIdCount);
+				case 'P':
+						cout << "POST REQUEST" << endl;
+						//cout << "The topic ID is " + givenRequest.topicId + " and the get method returns " + givenRequest.getTopicId() << endl;
+						if (topicIdCount == 0)
+						{
+								mutey.lock();
+								givenRequest.setPostId(topicIdCount);
+								// need setter method
+								allRequests.emplace_back(givenRequest);
+								mutey.unlock();
+								// cout << "POST ID converted to string on the ZERO Request is" + to_string(givenRequest.postId) << endl;
+								return to_string(givenRequest.postId);
+								// create new topic somehow - presumably this creates new topicID
+								// append to a topic - does this mean we need topic vectors? Investigate
+								// Either way, we need to take this, do the same topic comparison in the structure to figure out how many posts there are, and then return the post ID
+								// This is the 'alt' path where the topic does not already exist
+								// need to be able to return an accurate postID - here, 0
+								// if the topic does not exist, add the topicID to the vector here
+						}
+						else {
+								// This is the 'main path' where the topic does already exist
+								// As such, we need to do the same topic comparison in the structure to figure out what the post ID should be
+								// And then return that +1
+								// And add the request to the data structure
+								mutey.lock();
+								givenRequest.setPostId(topicIdCount);
+								allRequests.emplace_back(givenRequest);
+								mutey.unlock();
+								// figure out postId here - change to getPostId()
+								// cout << "PostId converted to string on the NON-ZERO is" + to_string(givenRequest.postId) <<endl;
+								return to_string(givenRequest.postId);
+								// find the amount of topicIds in vector and output
+								// append to existing topic (lookup against them)
+								// and an accurate postId here would be how many posts there already are on the topic
+								// request.find(topicId) maybe? throw in the get method - need a count
+						}
+						// this does the post
+						// Should probably have setter methods
+						// and lock /unlock at the start and end for mutexes - implement next. Lock/unlock on access/write to data structures
+						break;
+				case 'R':
+						// unlock
+						// read 
+						// take a topicID
+						// return the message
+						// need to implement the lookup here
+						// and then lock? is this where it goes??
+			/*			cout << "The topic ID is " + givenRequest.topicId << endl;
+						cout << "The message of this READ request is " + givenRequest.message << endl;
+						cout << "The getMessage request of this READ request is returning " + givenRequest.getMessage() << endl;*/
+						// cout << "The topic ID count is " + to_string(topicIdCount) + " and the postId is " + to_string(givenRequest.postId) << endl;
+						// Take the given request's topicID, and look it up in the existing data structure with all the pre-existing requests and their topicIds
+						// this is why the vector may need to be replaced by a map.
+						// iterate through vector, comparing the topicID. First to see if it exists, and also to see how many times it exists (hence getting the number of posts on the topic without needing postId)
+						// Hence you will need a variable called topicCount or whatever for how many times it returns.
+						// if (topicCount == 0 OR topicCount < givenRequest.postId) - make sure postId is being set correctly. In theory, the topic count should suffice without needing to literally get post IDs from the allRequests vector
+						// separate topicIdCounts for each one? may not be reset properly
+						cout << "READ REQUEST" << endl;
+						cout << "The read request's topic ID count is " + to_string(topicIdCount) + " and the POST ID is " + to_string(givenRequest.getPostId()) << endl;
+						// This should not be topic ID count, i don't think
+						if (topicIdCount < givenRequest.getPostId())
+						{
+								// this should be if topicID is greater than the number of times it appears in the topics structure
+								// OR if it isn't a thing at all (yet)
+								// Hence we return a blank line
+								// if(givenRequest.topicId > topicCount OR givenRequest.topicId is NOT in the vector
+								// Need a comparison topicID method - could be in the getter? or could have a validity checker method etc
+
+								return "";
+								// include a comparison on postId too for the other criteria
+
+						}
+						// this is gonna need serious debugging - what if post Ids don't match?
+						else
+						{
+								for (int i = 0; i < allRequests.size(); i++)
+								{
+										cout << "REQUEST NO: " + to_string(i) + " REQUEST: " + allRequests.at(i).toString() + " TOPIC ID: " + allRequests.at(i).getTopicId()+ " POST ID: " + to_string(allRequests.at(i).getPostId()) + "MESSAGE: " + allRequests.at(i).getMessage() + " Vector size " +to_string(allRequests.size()) << endl;
+										mutey.lock();
+										// the logic here is bugged, because this vector isn't actually broken
+										if (allRequests.at(i).getTopicId() == givenRequest.getTopicId())
+										{
+												cout << "Matches topic ID " + allRequests.at(i).getMessage() << endl;
+												if (allRequests.at(i).getPostId() == givenRequest.getPostId())
+												{
+														cout << "Matches topic and Post ID " + allRequests.at(i).getMessage() + " at " + to_string(i) << endl;
+														mutey.unlock();
+														return allRequests.at(i).getMessage();
+												}
+										}
+										else if ((allRequests.at(i).getTopicId() == givenRequest.getTopicId()) && (allRequests.at(i).getPostId() == givenRequest.getPostId()))
+										{
+												mutey.unlock();
+												return allRequests.at(i).getMessage();
+										}
+										mutey.unlock();
+								}
+
+								// 'normal path' if the topicID is fine#
+								// 
+								// then we just need to return the requested message
+								// so we need to be capable of looking up by topicId and then postId
+								// although here that should already be done, maybe.
+								// basically: grab the relevant ones from the allRequests vector
+								// first everything with the topicId, and then the postId
+								// The Ids to be searched by come from the givenRequest
+								// The ones to compare against come from whichever post requests have already gone in (or not)
+								// TOMORROW: write out your examples of each request. Comments left should help with implementation.
+								return "";
+						}
+				case 'L':
+
+						// LIST request
+						// This basically needs to print a vector of topicIds, but as a string
+						// We might create a separate DS for topic Ids if it improves speed
+						// In the mean time though, just iterate through allRequests and print every topicId that exists
+						// Doesn't specify if they should be unique
+						// But literally for (allRequests.size) output the topicIds into a string and return that
+						// could possibly be done in the pre-existing method for other stuff but maybe not
+						// Return the LIST
+						// are we returning in right place? may need to break, or return once at the end of these - just change return depending
+						// i.e. variable to return that changes depending on selection
+
+						// created the listRequests vector for this - there is a better way, granted, but not today
+						// actually LR vector not needed, you literally just need topicIds from everything
+						// the iteration I'm going to put here should be able to be replaced by a single method that can also handle the iteration above
+						// we're getting it working before we get it pretty.
+						// see if we can add the hash separator there - how might we do this
+						// hasn't been working cause any comparison with givenRequest is useless on a LIST request - it's just LIST
+						cout << "LIST REQUEST" << endl;
+						cout << "Size of vector at this point is: "+to_string(allRequests.size())<<endl;
+						mutey.lock();
+						for (int i = 0; i < allRequests.size(); i++)
+						{
+								if (listOfTopics.find(allRequests.at(i).getTopicId()) != std::string::npos)
+								{
+										cout << "Dupe found, don't add" << endl;
+								}
+								else {
+										listOfTopics.append("@");
+										listOfTopics.append(allRequests.at(i).getTopicId());
+								}
+						}
+						//copy(topics.begin(), topics.end(),
+						//		ostream_iterator<string>(topicString, separator));
+						//return topicString.str();
+						mutey.unlock();
+						return listOfTopics;
+				default:
+						cout << "Not a valid request";
 				}
-
-				// append message to topic if exists - use topicID to determine
-				// respond with PostID - 0 if topic does not exist, and new topic created (how? is a new topicID enough)
+				// exit is already handled - in theory
 		}
-		else if (ReadRequest::parse(request).valid) {
-				// take a topic ID from the request, and use it to look up topic
-				// use postID from request to identify and return requested message
-				// respond with the message
-				ReadRequest readRequest = ReadRequest::parse(request);
-				readRequest.getTopicId(); // use to look up topic and return message
-				readRequest.getPostId(); // use to return relevant post
-				// store as message and return - could be optimised
-				// return message;
-		}
+		// may need to return something here
+		// we'll need to return the changes / impacts to pass protocol verification
+		// so something from the vector?
 
-		// Then handle LIST
-		// Return list of all topic IDs, separated by hash
+		return request;
 
-		else if (ListRequest::parse(request).valid)
-		{
-				// cout all topic IDs - when we know how to get ALL of them
-				// where we getting these from?
-		}
+		//else if (ReadRequest::parse(request).valid) {
+		//		// take a topic ID from the request, and use it to look up topic
+		//		// use postID from request to identify and return requested message
+		//		// respond with the message
+		//		ReadRequest readRequest = ReadRequest::parse(request);
+		//		readRequest.getTopicId(); // use to look up topic and return message
+		//		readRequest.getPostId(); // use to return relevant post
+		//		// store as message and return - could be optimised
+		//		// return message;
+		//}
 
-		else if (CountRequest::parse(request).valid)
-		{
-				CountRequest countRequest = CountRequest::parse(request);
-				std::string topicId = countRequest.getTopicId();
-				// look up in the post directory how many match the topicIds
-				// return 0 if it doesn't exist.
-		}
-		// EXIT possibly already handled?
-		return "we'll implmement this later";
+		//// Then handle LIST
+		//// Return list of all topic IDs, separated by hash
+
+		//else if (ListRequest::parse(request).valid)
+		//{
+		//		// cout all topic IDs - when we know how to get ALL of them
+		//		// where we getting these from?
+		//}
+
+		//else if (CountRequest::parse(request).valid)
+		//{
+		//		CountRequest countRequest = CountRequest::parse(request);
+		//		std::string topicId = countRequest.getTopicId();
+		//		// look up in the post directory how many match the topicIds
+		//		// return 0 if it doesn't exist.
+		//}
+		//// EXIT possibly already handled?
 }
 
 
@@ -138,7 +338,7 @@ int main()
 		for (auto& th : serverThreads)
 				th.join();
 		// count them here
-		// output total number tooo
+		// output total number too
 
 		std::cout << "Server terminated." << std::endl;
 
@@ -182,7 +382,7 @@ void serverThreadFunction(TCPServer* server, ReceivedSocketData&& data)
 						//std::cout << "[" << socketIndex << "] Data received: " << data.request << std::endl;
 						// std::cout << "[" << socketIndex << "] Exiting... Bye bye!" << std::endl;
 
-						// reply may just need to be blank
+						// reply needs to be blank
 						data.reply = data.request;
 						server->sendReply(data);
 				}

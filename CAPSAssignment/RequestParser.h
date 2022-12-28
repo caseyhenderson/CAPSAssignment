@@ -7,6 +7,9 @@ class Request
 {
 public:
 		Request();
+		Request(std::string requestType);
+		Request(std::string requestType, std::string topicId, std::string message);
+		Request(std::string requestType, std:: string topicId, std::string message, int postId);
 		~Request();
 		static Request parse(std::string request);
 		std::string getTopicId();
@@ -14,6 +17,8 @@ public:
 		std::string toString();
 		std::string getRequestType();
 		int getPostId();
+		void setPostId(int givenPostId);
+		void setValid(Request request, bool valid);
 		std::string topicId;
 		std::string message;
 		std::string requestType;
