@@ -86,6 +86,7 @@ string handleRequestTypes(string request)
 				// Do we need to do this before everything? probably not, so mess around with it for efficiency
 				for (int i = 0; i < (allRequests.size()); i++)
 				{
+						// if it's already in topics, don't add it
 						if (givenRequest.getTopicId() == allRequests.at(i).getTopicId())
 						{
 								// listRequests.emplace_back(allRequests.at(i));
@@ -93,13 +94,21 @@ string handleRequestTypes(string request)
 								// only gets one message added to it, weirdly. check this
 								// and it's always the first post request?
 								// could be to do with where it is, or where the iterator is? 
-								topics.emplace_back(allRequests.at(i).getTopicId());
+
+								// should this only be happening on POST requests?
+								//if (count(topics.begin(), topics.end(), givenRequest.getTopicId()) == 0)
+								//{
+								//		topics.emplace_back(allRequests.at(i).getTopicId());
+								//		cout << "Unique topic found, and added" << endl;
+								//}
+								// topics.emplace_back(allRequests.at(i).getTopicId());
+								// suppose it adds whenever a match is found, so in theory no? monitor
 								topicIdCount++;
 						}
-						else
+	/*					else
 						{
-								topics.emplace_back(allRequests.at(i).getTopicId());
-						}
+								cout << "Don't add" << endl;
+						}*/
 				}
 				cout << "Number of matches for topic " + to_string(topicIdCount) << endl;
 				// CITATION TWO https://stackoverflow.com/questions/5689003/how-to-implode-a-vector-of-strings-into-a-string-the-elegant-way
@@ -133,7 +142,23 @@ string handleRequestTypes(string request)
 								mutey.lock();
 								givenRequest.setPostId(topicIdCount);
 								// need setter method
+	/*							for (int i = 0; i < allRequests.size(); i++)
+								{
+										if (givenRequest.getTopicId() == allRequests.at(i).getTopicId())
+										{
+												cout << "Dupe, no add";
+										}
+										else
+										{
+												topics.emplace_back(givenRequest.getTopicId());
+										}
+								}*/
 								allRequests.emplace_back(givenRequest);
+			/*					if (count(allRequests.begin(), allRequests.end(), givenRequest.getTopicId()) == 0)
+								{
+										topics.emplace_back(givenRequest.getTopicId());
+										cout << "Unique topic found, and added" << endl;
+								}*/
 								mutey.unlock();
 								// cout << "POST ID converted to string on the ZERO Request is" + to_string(givenRequest.postId) << endl;
 								return to_string(givenRequest.postId);
@@ -208,6 +233,7 @@ string handleRequestTypes(string request)
 										if (allRequests.at(i).getTopicId() == givenRequest.getTopicId())
 										{
 												cout << "Matches topic ID " + allRequests.at(i).getMessage() << endl;
+												// is this bit the problem? does it just not get out in time to iterate?
 												if (allRequests.at(i).getPostId() == givenRequest.getPostId())
 												{
 														cout << "Matches topic and Post ID " + allRequests.at(i).getMessage() + " at " + to_string(i) << endl;
@@ -254,23 +280,95 @@ string handleRequestTypes(string request)
 						// we're getting it working before we get it pretty.
 						// see if we can add the hash separator there - how might we do this
 						// hasn't been working cause any comparison with givenRequest is useless on a LIST request - it's just LIST
+						// probably worth creating separate, unique LIST topic vector
 						cout << "LIST REQUEST" << endl;
 						cout << "Size of vector at this point is: "+to_string(allRequests.size())<<endl;
+						cout << "Contents are " << listOfTopics << endl;
+						// cout << "Size of topics vector is: " + to_string(topics.size());
+						//for (int j = 0; j < topics.size(); j++)
+						//{
+						//		cout << "Topics vector contains " + topics.at(j) << endl;
+						//}
+
+						// fix this, it's outrageously complicated for what it is
 						mutey.lock();
-						for (int i = 0; i < allRequests.size(); i++)
+						for (int i = 0, j = 0; i < allRequests.size(); i++)
 						{
 								if (listOfTopics.find(allRequests.at(i).getTopicId()) != std::string::npos)
 								{
 										cout << "Dupe found, don't add" << endl;
+										// is it this?
 								}
 								else {
+										if (listOfTopics.size() > 1)
+										{
+												listOfTopics.append("#");
+										}
 										listOfTopics.append("@");
+										// make conditonal - should only be added if separating words (don't worry about trailing here, it's removed at the end)
 										listOfTopics.append(allRequests.at(i).getTopicId());
+										// this is not adding hashtags properly
+										cout << "List one: " + listOfTopics << endl;
+
+										// this keeps being added and then removed.
 								}
 						}
+						cout << "List one point 5: " + listOfTopics << endl;
+
+										// this logic is broken and unwieldy
+										// basically, add a hashtag unles it's going to be trailing.
+
+
+
+
+
+						//				if (i = (allRequests.size()-1) && ((allRequests.size() - 1)>0))
+						//				{
+						//						cout << "Don't add the hashtag";
+						//				}
+						//				else
+						//				{
+						//						// remove this to go back up to 15
+						//						// hashtags do need adding as separators though
+						//						// TOMORROW: Fix 'READ' and 'LIST' - possibly the same issue with the data structure?
+						//						cout << "Do add the hashtag, unless it's trailing";
+						//						listOfTopics.append("#");
+						//						if (listOfTopics.length() > 0)
+						//						{
+						//								std::string::iterator it = listOfTopics.end() - 1;
+						//								cout << listOfTopics;
+						//								if (*it == '#')
+						//								{
+						//										listOfTopics.erase(it);
+						//								}
+						//						}
+						//				}
+						//		}
+						//}
+		/*				if (listOfTopics.length() > 0)
+						{
+								std::string::iterator it = listOfTopics.end() - 1;
+								cout << listOfTopics;
+								if (*it == '#')
+								{
+										listOfTopics.erase(it);
+								}
+						}*/
 						//copy(topics.begin(), topics.end(),
 						//		ostream_iterator<string>(topicString, separator));
 						//return topicString.str();
+						
+
+						// this is fine at killing trailing hashtags. the job now is to get them where they're actually needed.
+						if (listOfTopics.length() > 0)
+						{
+								std::string::iterator it = listOfTopics.end() - 1;
+								if (*it == '#')
+								{
+										listOfTopics.erase(it);
+								}
+						}
+						cout << "List two: " + listOfTopics << endl;
 						mutey.unlock();
 						return listOfTopics;
 				default:
