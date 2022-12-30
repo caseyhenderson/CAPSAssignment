@@ -69,6 +69,12 @@ string handleRequestTypes(string request)
 
 
 
+		// TODO:
+		// Fix weirdness with postId being saved to message on Read Requests
+		// Introduce shared locks
+		// Remove spaghetti code
+		// Hopefully improve performance thusly
+		// Multithreading does now work but is S L O W
 
 
 
@@ -84,9 +90,12 @@ string handleRequestTypes(string request)
 				// VEC CITATION ONE https://stackoverflow.com/questions/2395275/how-to-navigate-through-a-vector-using-iterators-c
 				// the iteration is what's breaking here
 				// Do we need to do this before everything? probably not, so mess around with it for efficiency
+			
 				for (int i = 0; i < (allRequests.size()); i++)
 				{
 						// if it's already in topics, don't add it
+						mutey.lock();
+						// problematic access violation here, yay
 						if (givenRequest.getTopicId() == allRequests.at(i).getTopicId())
 						{
 								// listRequests.emplace_back(allRequests.at(i));
@@ -105,17 +114,19 @@ string handleRequestTypes(string request)
 								// suppose it adds whenever a match is found, so in theory no? monitor
 								topicIdCount++;
 						}
+						mutey.unlock();
 	/*					else
 						{
 								cout << "Don't add" << endl;
 						}*/
 				}
-				cout << "Number of matches for topic " + to_string(topicIdCount) << endl;
+				// uncomment below a
+				//cout << "Number of matches for topic " + to_string(topicIdCount) << endl;
 				// CITATION TWO https://stackoverflow.com/questions/5689003/how-to-implode-a-vector-of-strings-into-a-string-the-elegant-way
 				const char* const separator = "#";
 				ostringstream topicString;
 
-
+	
 				// ^ this may need to be switched to handle a DS of topicIds
 				// ^ or a custom method
 				// If they all have ^ then this needs to be [1]
@@ -123,7 +134,7 @@ string handleRequestTypes(string request)
 				switch (initialCharacter)
 				{
 				case 'C':
-						cout << "COUNT REQUEST" << endl;
+						// cout << "COUNT REQUEST" << endl;
 						// this does the count?
 						// and maybe the lock/unlock here - anywhere where we access DS put lock around it
 						// take a topicId, return size
@@ -135,7 +146,8 @@ string handleRequestTypes(string request)
 						// if (size = 0) return 0, if not return size - literally just returning the size / count value (which is also technically the new post ID referenced in the below request handlers - can be made more generic)
 						return to_string(topicIdCount);
 				case 'P':
-						cout << "POST REQUEST" << endl;
+						// cout << "POST REQUEST" << endl << to_string(topicIdCount) << endl;
+
 						//cout << "The topic ID is " + givenRequest.topicId + " and the get method returns " + givenRequest.getTopicId() << endl;
 						if (topicIdCount == 0)
 						{
@@ -207,9 +219,34 @@ string handleRequestTypes(string request)
 						// Hence you will need a variable called topicCount or whatever for how many times it returns.
 						// if (topicCount == 0 OR topicCount < givenRequest.postId) - make sure postId is being set correctly. In theory, the topic count should suffice without needing to literally get post IDs from the allRequests vector
 						// separate topicIdCounts for each one? may not be reset properly
-						cout << "READ REQUEST" << endl;
-						cout << "The read request's topic ID count is " + to_string(topicIdCount) + " and the POST ID is " + to_string(givenRequest.getPostId()) << endl;
+						// UNC when done with speed testcout << "READ REQUEST" << endl;
+						// UNC WHEN SPEED DONEcout << "GIVEN REQUEST: " +givenRequest.getRequestType()+" REQUEST VALUE:" + givenRequest.toString() + " TOPIC ID : " + givenRequest.getTopicId() + " POST ID : " + to_string(givenRequest.getPostId()) + "MESSAGE : " + givenRequest.getMessage() << endl;
+						// doesn't seem to think request has a message? returns int value (WTF)
+					// of course it doesn't have a message, moron
+					// 
+					// 
+						// it's a READ request
+						// hence it's not about the message
+						// it's about having the right POST ID to thus find the message in the data structure
+						// but weirdly message returns 1 
+						// and post ID returns 0
+						// for the bugged requests. How is message being set to what POST ID should be? And where would this be
+						// Request itself isn't corrupt - prints fine
+						// Bugged throughout as well - post IDs are incorrect on most RRs even the ones that pass
+						// not being set correctly, but coming through OK in the given request
+						// does this entire logic need fixing?
+
+						// because whatever's in message is actually the PostID for READ requests.
+						// substitute it, and 18/18
+						// so what's happened?
+						// need to investigate and fix
+						//LATER: track down why the message value for READ requests has the value that PostID should have
+						// and how do we fix it
+
+						// UNC cout << "The read request's topic ID count is " + to_string(topicIdCount) + " and the POST ID is " + to_string(givenRequest.getPostId()) << endl;
 						// This should not be topic ID count, i don't think
+						// post id is wrong here - falsely returns 0
+						cout << "Request: " << givenRequest.toString() << "Topic ID COUNT " + to_string(topicIdCount) + " post ID: " + to_string(givenRequest.getPostId()) + " real Post ID (stored in message for some reason)" + givenRequest.getMessage() << endl;
 						if (topicIdCount < givenRequest.getPostId())
 						{
 								// this should be if topicID is greater than the number of times it appears in the topics structure
@@ -225,18 +262,21 @@ string handleRequestTypes(string request)
 						// this is gonna need serious debugging - what if post Ids don't match?
 						else
 						{
+								mutey.lock();
 								for (int i = 0; i < allRequests.size(); i++)
 								{
-										cout << "REQUEST NO: " + to_string(i) + " REQUEST: " + allRequests.at(i).toString() + " TOPIC ID: " + allRequests.at(i).getTopicId()+ " POST ID: " + to_string(allRequests.at(i).getPostId()) + "MESSAGE: " + allRequests.at(i).getMessage() + " Vector size " +to_string(allRequests.size()) << endl;
-										mutey.lock();
+										// UNC UNC UNC cout << "VECTOR REQUEST NO: " + to_string(i) + " REQUEST: " + allRequests.at(i).toString() + " TOPIC ID: " + allRequests.at(i).getTopicId() + " POST ID: " + to_string(allRequests.at(i).getPostId()) + "MESSAGE: " + allRequests.at(i).getMessage() + " Vector size " + to_string(allRequests.size()) << endl;
+
 										// the logic here is bugged, because this vector isn't actually broken
+
 										if (allRequests.at(i).getTopicId() == givenRequest.getTopicId())
 										{
-												cout << "Matches topic ID " + allRequests.at(i).getMessage() << endl;
+												
+												// unc cout << "Matches topic ID " + allRequests.at(i).getMessage() << endl;
 												// is this bit the problem? does it just not get out in time to iterate?
 												if (allRequests.at(i).getPostId() == givenRequest.getPostId())
 												{
-														cout << "Matches topic and Post ID " + allRequests.at(i).getMessage() + " at " + to_string(i) << endl;
+														// UNC cout << "Matches topic and Post ID " + allRequests.at(i).getMessage() + " at " + to_string(i) << endl;
 														mutey.unlock();
 														return allRequests.at(i).getMessage();
 												}
@@ -246,8 +286,8 @@ string handleRequestTypes(string request)
 												mutey.unlock();
 												return allRequests.at(i).getMessage();
 										}
-										mutey.unlock();
 								}
+								mutey.unlock();
 
 								// 'normal path' if the topicID is fine#
 								// 
@@ -281,9 +321,9 @@ string handleRequestTypes(string request)
 						// see if we can add the hash separator there - how might we do this
 						// hasn't been working cause any comparison with givenRequest is useless on a LIST request - it's just LIST
 						// probably worth creating separate, unique LIST topic vector
-						cout << "LIST REQUEST" << endl;
-						cout << "Size of vector at this point is: "+to_string(allRequests.size())<<endl;
-						cout << "Contents are " << listOfTopics << endl;
+						// UNC cout << "LIST REQUEST" << endl;
+						// cout << "Size of vector at this point is: "+to_string(allRequests.size())<<endl;
+						// cout << "Contents are " << listOfTopics << endl;
 						// cout << "Size of topics vector is: " + to_string(topics.size());
 						//for (int j = 0; j < topics.size(); j++)
 						//{
@@ -291,12 +331,13 @@ string handleRequestTypes(string request)
 						//}
 
 						// fix this, it's outrageously complicated for what it is
+						// but it does work lol
 						mutey.lock();
 						for (int i = 0, j = 0; i < allRequests.size(); i++)
 						{
 								if (listOfTopics.find(allRequests.at(i).getTopicId()) != std::string::npos)
 								{
-										cout << "Dupe found, don't add" << endl;
+										//cout << "Dupe found, don't add" << endl;
 										// is it this?
 								}
 								else {
@@ -308,12 +349,12 @@ string handleRequestTypes(string request)
 										// make conditonal - should only be added if separating words (don't worry about trailing here, it's removed at the end)
 										listOfTopics.append(allRequests.at(i).getTopicId());
 										// this is not adding hashtags properly
-										cout << "List one: " + listOfTopics << endl;
+										// cout << "List one: " + listOfTopics << endl;
 
 										// this keeps being added and then removed.
 								}
 						}
-						cout << "List one point 5: " + listOfTopics << endl;
+						// cout << "List one point 5: " + listOfTopics << endl;
 
 										// this logic is broken and unwieldy
 										// basically, add a hashtag unles it's going to be trailing.
@@ -368,7 +409,7 @@ string handleRequestTypes(string request)
 										listOfTopics.erase(it);
 								}
 						}
-						cout << "List two: " + listOfTopics << endl;
+						// cout << "List two: " + listOfTopics << endl;
 						mutey.unlock();
 						return listOfTopics;
 				default:
