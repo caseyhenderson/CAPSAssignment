@@ -70,11 +70,18 @@ string handleRequestTypes(string request)
 
 
 		// TODO:
-		// Fix weirdness with postId being saved to message on Read Requests
-		// Introduce shared locks
+		// Fix weirdness with postId being saved to message on Read Requests DONE - seemingly (was a parsing thing - the same thing that's used to get the message on POST requests can be used to get the PostId on read requests)
+		// Introduce shared locks - how do we do this?
 		// Remove spaghetti code
 		// Hopefully improve performance thusly
 		// Multithreading does now work but is S L O W
+		// CURRENT STATS (30/12/2022, 01:11): Total poster requests: 2228.
+/*			Total reader requests : 2124.
+				Average requests per reader thread : 1062.
+				Total requests : 4352.
+				Average requests per thread : 1088.
+				Average requests per thread per second : 108.724.*/		/*Average requests per poster thread : 1114.*/
+	
 
 
 

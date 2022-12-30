@@ -80,7 +80,7 @@ std::string Request::getTopicId()
 
 std::string Request::getMessage()
 {
-		cout << "This message from the" << requestType << message << endl;
+	// 	cout << "This message from the" << requestType << message << endl;
 		return message;
 }
 
