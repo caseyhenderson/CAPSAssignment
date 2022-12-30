@@ -246,7 +246,7 @@ string handleRequestTypes(string request)
 						// UNC cout << "The read request's topic ID count is " + to_string(topicIdCount) + " and the POST ID is " + to_string(givenRequest.getPostId()) << endl;
 						// This should not be topic ID count, i don't think
 						// post id is wrong here - falsely returns 0
-						cout << "Request: " << givenRequest.toString() << "Topic ID COUNT " + to_string(topicIdCount) + " post ID: " + to_string(givenRequest.getPostId()) + " real Post ID (stored in message for some reason)" + givenRequest.getMessage() << endl;
+						// UNC cout << "Request: " << givenRequest.toString() << "Topic ID COUNT " + to_string(topicIdCount) + " post ID: " + to_string(givenRequest.getPostId()) + " real Post ID (stored in message for some reason)" + givenRequest.getMessage() << endl;
 						if (topicIdCount < givenRequest.getPostId())
 						{
 								// this should be if topicID is greater than the number of times it appears in the topics structure
@@ -522,7 +522,7 @@ void serverThreadFunction(TCPServer* server, ReceivedSocketData&& data)
 						// std::cout << "[" << socketIndex << "] Exiting... Bye bye!" << std::endl;
 
 						// reply needs to be blank
-						data.reply = data.request;
+						data.reply = "";
 						server->sendReply(data);
 				}
 		} while (data.request != "exit" && data.request != "EXIT" && !terminateServer);
