@@ -11,7 +11,7 @@
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
-
+				
 #define PORT_BUFFER_LEN 10
 #define DEFAULT_BUFLEN 65536
 
