@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 #include <mutex>
+#include <shared_mutex>
 
 #include "config.h"
 #include "TCPServer.h"
@@ -16,20 +17,49 @@ using namespace std;
 
 bool terminateServer = false;
 
+// TODO Server: Implement shared locks and whatever else is necessary to reach 1000 reqs/thread/second goal.
+// Clean up code and remove spaghetti code
+// Once 1000 requests/thread/second reliably achieved, server is done and testing can begin (for report)
+// Can also split a few things into functions (i.e. topic Id iterator method)
 void serverThreadFunction(TCPServer* server, ReceivedSocketData&& data);
 string handleRequestTypes(string request);
 
-// define your mutexes? and vectors here
-// will be one vector but let's get working requests first
 vector<Request> allRequests;
-// vector<Request> listRequests;
 vector<string> topics;
 string listOfTopics = "";
-mutex mutey;
-// vector<PostRequest> postRequests;
-// WARNING: Contains Agony, Pain and Suffering
-// Yes, that's right - it's CAPS
+shared_mutex mutey;
 
+// this will be replaced with a shared_mutex, but we need to figure out how that's done first.
+// Will potentially need to refactor this into a class (would be a good idea anyway, OOP principles)
+// In that case, may need to separate certain vars from the class
+// class XXXX, etc
+// how would that impact methods?
+int main()
+{
+		TCPServer server(DEFAULT_PORT);
+
+		ReceivedSocketData receivedData;
+
+		std::vector<std::thread> serverThreads;
+
+
+		while (!terminateServer)
+		{
+				receivedData = server.accept();
+				if (!terminateServer)
+				{
+						std::cout << "Server started." << endl;
+						serverThreads.emplace_back(serverThreadFunction, &server, receivedData);
+				}
+		}
+		for (auto& th : serverThreads)
+				th.join();
+		// count them here
+		// output total number too
+		std::cout << "Server terminated." << std::endl;
+
+		return 0;
+}
 
 string handleRequestTypes(string request)
 {
@@ -53,14 +83,21 @@ string handleRequestTypes(string request)
 
 				// VEC CITATION ONE https://stackoverflow.com/questions/2395275/how-to-navigate-through-a-vector-using-iterators-c
 				// Do we need to do this before everything? probably not, so mess around with it for efficiency
+				std::shared_lock<std::shared_mutex> shared(mutey, std::defer_lock);
+				std::unique_lock<std::shared_mutex> unique(mutey, std::defer_lock);
+				// possibly need to add defer_lock
+				// also, it's probably time to change vector to map 
+
 				for (int i = 0; i < (allRequests.size()); i++)
 				{
-						mutey.lock();
+						shared.lock();
+						// BAD LINE BELOW
+						// How can we do this differently? and is it being called loads
 						if (givenRequest.getTopicId() == allRequests.at(i).getTopicId())
 						{
 								topicIdCount++;
 						}
-						mutey.unlock();
+						shared.unlock();
 	/*					else
 						{
 								cout << "Don't add" << endl;
@@ -77,16 +114,16 @@ string handleRequestTypes(string request)
 						if (topicIdCount == 0)
 						{
 								givenRequest.setPostId(topicIdCount);
-								mutey.lock();
+								unique.lock();
 								allRequests.emplace_back(givenRequest);
-								mutey.unlock();
+								unique.unlock();
 								return to_string(givenRequest.postId);
 						}
 						else {
-								mutey.lock();
 								givenRequest.setPostId(topicIdCount);
+								unique.lock();
 								allRequests.emplace_back(givenRequest);
-								mutey.unlock();
+								unique.unlock();
 								return to_string(givenRequest.postId);
 						}
 						break;
@@ -97,33 +134,31 @@ string handleRequestTypes(string request)
 						}
 						else
 						{
-								mutey.lock();
+								shared.lock();
 								for (int i = 0; i < allRequests.size(); i++)
 								{
 										if (allRequests.at(i).getTopicId() == givenRequest.getTopicId())
 										{
 												if (allRequests.at(i).getPostId() == givenRequest.getPostId())
 												{
-														mutey.unlock();
+														shared.unlock();
 														return allRequests.at(i).getMessage();
 												}
 										}
 										else if ((allRequests.at(i).getTopicId() == givenRequest.getTopicId()) && (allRequests.at(i).getPostId() == givenRequest.getPostId()))
 										{
-												mutey.unlock();
+												shared.unlock();
 												return allRequests.at(i).getMessage();
 										}
 								}
-								mutey.unlock();
+								shared.unlock();
 								return "";
 						}
 				case 'L':
-
-
 						// fix this, it's outrageously complicated for what it is
 						// but it does work lol
 						// think about what we're trying to do, and how we can speed it up
-						mutey.lock();
+						shared.lock();
 						for (int i = 0, j = 0; i < allRequests.size(); i++)
 						{
 								if (listOfTopics.find(allRequests.at(i).getTopicId()) != std::string::npos)
@@ -141,7 +176,7 @@ string handleRequestTypes(string request)
 
 								}
 						}
-						mutey.unlock();
+						shared.unlock();
 
 						if (listOfTopics.length() > 0)
 						{
@@ -160,36 +195,6 @@ string handleRequestTypes(string request)
 		// fix this, shouldn't be needed
 }
 
-
-int main()
-{
-		TCPServer server(DEFAULT_PORT);
-
-		ReceivedSocketData receivedData;
-
-		std::vector<std::thread> serverThreads;
-
-		std::cout << "Starting server. Send \"exit\" (without quotes) to terminate." << std::endl;
-
-		while (!terminateServer)
-		{
-				receivedData = server.accept();
-
-				if (!terminateServer)
-				{
-						serverThreads.emplace_back(serverThreadFunction, &server, receivedData);
-				}
-		}
-
-		for (auto& th : serverThreads)
-				th.join();
-		// count them here
-		// output total number too
-
-		std::cout << "Server terminated." << std::endl;
-
-		return 0;
-}
 
 void serverThreadFunction(TCPServer* server, ReceivedSocketData&& data)
 {

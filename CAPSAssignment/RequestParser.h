@@ -12,17 +12,24 @@ public:
 		Request(std::string requestType, std:: string topicId, std::string message, int postId);
 		~Request();
 		static Request parse(std::string request);
-		std::string getTopicId();
-		std::string getMessage();
+		std::string getTopicId() { return this->topicId; }
+		std::string getMessage() { return this->message; }
 		std::string toString();
-		std::string getRequestType();
-		int getPostId();
-		void setPostId(int givenPostId);
+		std::string getRequestType() {
+				return this->requestType;
+		}
+		int getPostId() {
+				return this->postId;}
+		void setPostId(int givenPostId) {
+				 this->postId = givenPostId;
+		};
 		void setValid(Request request, bool valid);
 		std::string topicId;
 		std::string message;
 		std::string requestType;
 		int postId;
+		// check if valid is being used
+		// next stage is to take the setters to inline as seen above with the getters.
 		bool valid;
 };
 
